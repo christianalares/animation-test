@@ -1,9 +1,47 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
 import { Question } from './Question'
 import { QuestionNav } from './QuestionNav'
 import { AnimatePresence, motion } from 'framer-motion'
+
+type State = {
+  dir: Direction
+  currentQuestionIndex: number
+}
+
+type Action = {
+  type: 'prev' | 'next'
+}
+
+const initialState: State = {
+  dir: 0,
+  currentQuestionIndex: 0,
+}
+
+const reducer = (state: State, action: Action): State => {
+  if (action.type === 'prev') {
+    const canNavBack = state.currentQuestionIndex > 0
+    const newCurrentQuestionIndex = canNavBack ? state.currentQuestionIndex - 1 : state.currentQuestionIndex
+
+    return {
+      ...state,
+      dir: -1,
+      currentQuestionIndex: newCurrentQuestionIndex,
+    }
+  } else if (action.type === 'next') {
+    const canNavForward = state.currentQuestionIndex < QUESTIONS.length - 1
+    const newCurrentQuestionIndex = canNavForward ? state.currentQuestionIndex + 1 : state.currentQuestionIndex
+
+    return {
+      ...state,
+      dir: 1,
+      currentQuestionIndex: newCurrentQuestionIndex,
+    }
+  }
+
+  return state
+}
 
 type Direction = 0 | -1 | 1
 
@@ -36,36 +74,40 @@ const QUESTIONS: TQuestion[] = [
   },
 ]
 
+const variants = {
+  initial: (dir: Direction) => ({
+    opacity: 0,
+    x: `${dir * 130}%`,
+    rotate: dir * 20,
+    y: '80%',
+  }),
+  animate: {
+    opacity: 1,
+    x: '0%',
+    rotate: 0,
+    y: 0,
+  },
+  exit: (dir: Direction) => ({
+    opacity: 0,
+    x: `${-dir * 130}%`,
+    rotate: -dir * 20,
+    y: '80%',
+  }),
+}
+
 export const Questions = () => {
-  const [direction, setDirection] = useState<Direction>(0)
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const question = QUESTIONS[currentQuestionIndex]
+  const [state, dispatch] = useReducer(reducer, initialState)
 
-  const canNavBack = currentQuestionIndex > 0
-  const canNavForward = currentQuestionIndex < QUESTIONS.length - 1
-
-  const handlePrev = useCallback(() => {
-    if (!canNavBack) {
-      return
-    }
-    setDirection(-1)
-    setCurrentQuestionIndex((prev) => prev - 1)
-  }, [canNavBack])
-
-  const handleNext = useCallback(() => {
-    if (!canNavForward) {
-      return
-    }
-    setDirection(1)
-    setCurrentQuestionIndex((prev) => prev + 1)
-  }, [canNavForward])
+  const canNavBack = state.currentQuestionIndex > 0
+  const canNavForward = state.currentQuestionIndex < QUESTIONS.length - 1
+  const question = QUESTIONS[state.currentQuestionIndex]
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') {
-        handlePrev()
+        dispatch({ type: 'prev' })
       } else if (e.key === 'ArrowRight') {
-        handleNext()
+        dispatch({ type: 'next' })
       }
     }
 
@@ -74,43 +116,34 @@ export const Questions = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [handleNext, handlePrev])
+  }, [])
+
+  if (!question) {
+    return null
+  }
 
   return (
-    <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden">
-      <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+    <div className="flex w-full max-w-3xl flex-1 flex-col">
+      <AnimatePresence mode="popLayout" custom={state.dir} initial={false}>
         <motion.div
-          custom={direction}
-          variants={{
-            initial: (dir: Direction) => ({
-              opacity: 0,
-              x: `${dir * 130}%`,
-              rotate: dir * 20,
-              y: '50%',
-            }),
-            animate: {
-              opacity: 1,
-              x: '0%',
-              rotate: 0,
-              y: 0,
-            },
-            exit: (dir: Direction) => ({
-              opacity: 0,
-              x: `${-dir * 130}%`,
-              rotate: -dir * 20,
-              y: '50%',
-            }),
-          }}
+          key={state.currentQuestionIndex}
+          custom={state.dir}
+          variants={variants}
           initial="initial"
           animate="animate"
           exit="exit"
-          transition={{ type: 'spring', bounce: 0, duration: 1.5 }}
-          key={currentQuestionIndex}
+          transition={{ /* type: 'spring', bounce: 0, */ duration: 1.5 }}
         >
           <Question question={question} />
         </motion.div>
       </AnimatePresence>
-      <QuestionNav onPrev={handlePrev} onNext={handleNext} disabledPrev={!canNavBack} disabledNext={!canNavForward} />
+
+      <QuestionNav
+        onPrev={() => dispatch({ type: 'prev' })}
+        onNext={() => dispatch({ type: 'next' })}
+        disabledPrev={!canNavBack}
+        disabledNext={!canNavForward}
+      />
     </div>
   )
 }
