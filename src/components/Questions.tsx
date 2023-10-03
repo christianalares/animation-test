@@ -5,6 +5,8 @@ import { Question } from './Question'
 import { QuestionNav } from './QuestionNav'
 import { AnimatePresence, motion } from 'framer-motion'
 
+type Direction = 0 | -1 | 1
+
 export type TQuestion = {
   id: string
   body: string
@@ -35,7 +37,7 @@ const QUESTIONS: TQuestion[] = [
 ]
 
 export const Questions = () => {
-  const [direction, setDirection] = useState<0 | -1 | 1>(0)
+  const [direction, setDirection] = useState<Direction>(0)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const question = QUESTIONS[currentQuestionIndex]
 
@@ -80,7 +82,7 @@ export const Questions = () => {
         <motion.div
           custom={direction}
           variants={{
-            initial: (dir) => ({
+            initial: (dir: Direction) => ({
               opacity: 0,
               x: `${dir * 130}%`,
               rotate: dir * 20,
@@ -92,7 +94,7 @@ export const Questions = () => {
               rotate: 0,
               y: 0,
             },
-            exit: (dir) => ({
+            exit: (dir: Direction) => ({
               opacity: 0,
               x: `${-dir * 130}%`,
               rotate: -dir * 20,
